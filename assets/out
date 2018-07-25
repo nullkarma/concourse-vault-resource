@@ -43,11 +43,11 @@ else
   response = Vault.logical.write(key, **content)
 end
 
+metadata = []
 begin
-  metadata = response.data
+  metadata << response.data
   version = response.data[:version]
 rescue
-  metadata = {}
   version = Date.today.to_time.to_i
 end
 

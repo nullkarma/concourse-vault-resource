@@ -49,11 +49,11 @@ rescue
   raise "Secret not available"
 end
 
+metadata = []
 begin
-  metadata = dataobj.data[:metadata]
+  metadata << dataobj.data[:metadata]
   version = metadata[:version]
 rescue
-  metadata = {}
   version = last_version
 end
 
