@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+
+require 'vault'
+require 'date'
+
+
+# {
+#   "source": {
+#     "host": "...",
+#     "user": "...",
+#     "password": "..."
+#     "database": "..."
+#     "table": "..."
+#   },
+#   "version": { "id": 1423 }
+# }
+
+source = JSON.parse ARGF.read
+
+host = source['source']['host']
+token = source['source']['token']
+secret = source['source']['secret']
+
+begin
+  last_version = source['version']['id'] 
+rescue
+  last_version = Date.today.to_time.to_i
+end
+
+Vault.configure do |config|
+  config.address = host
+  config.token = token
+  config.ssl_verify = false
+end
+
+dataobj = Vault.logical.read secret
+
+begin
+  version = dataobj.data[:metadata][:version]
+rescue
+  version = last_version
+end
+
+ret = []
+ret << {id: "#{version}"}
+
+puts ret.to_json

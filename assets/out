@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+
+require 'vault'
+require 'date'
+
+# {
+#   "source": {
+#     "host": "...",
+#     "user": "...",
+#     "password": "..."
+#     "database": "..."
+#     "secret": "..."
+#   },
+#   "version": { "id": 1423 },
+#   "params: {
+#     "key": "foobar"
+#   }
+# }
+
+destination = ARGV[0]
+source = JSON.parse STDIN.read
+
+host = source['source']['host']
+token = source['source']['token']
+secret = source['source']['secret']
+key = source['params']['key']
+kv2 = source['params']['kv2'].nil? ? false : source['params']['kv2']
+
+Vault.configure do |config|
+  config.address = host
+  config.token = token
+  config.ssl_verify = false
+end
+
+
+basename = File.basename(secret)
+dirname = File.dirname(secret)
+
+content = open(File.join(destination, dirname, basename + '.json'), 'r') { |f| JSON.parse f.gets }.map { |k,v| [k.to_sym, v] }.to_h
+if kv2
+  response = Vault.logical.write(key, data: content)
+else
+  response = Vault.logical.write(key, **content)
+end
+
+begin
+  metadata = response.data
+  version = response.data[:version]
+rescue
+  metadata = {}
+  version = Date.today.to_time.to_i
+end
+
+ret = {version: {id: "#{version}"}, metadata: metadata}.to_json
+puts ret

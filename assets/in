@@ -1,0 +1,70 @@
+#!/usr/bin/env ruby
+
+require 'vault'
+require 'fileutils'
+require 'date'
+
+
+# {
+#   "source": {
+#     "host": "...",
+#     "user": "...",
+#     "password": "..."
+#     "database": "..."
+#     "secret": "..."
+#   },
+#   "version": { "id": 1423 },
+#   "params: {
+#   ...
+#   }
+# }
+
+destination = ARGV[0]
+source = JSON.parse STDIN.read
+
+host = source['source']['host']
+token = source['source']['token']
+secret = source['source']['secret']
+
+begin
+  last_version = source['version']['id'] 
+rescue
+  last_version = Date.today.to_time.to_i
+end
+
+Vault.configure do |config|
+  config.address = host
+  config.token = token
+  config.ssl_verify = false
+end
+
+dataobj = Vault.logical.read secret
+
+begin
+  data = dataobj.data[:data]
+  if data.nil?
+    data = dataobj.data
+  end
+rescue
+  raise "Secret not available"
+end
+
+begin
+  metadata = dataobj.data[:metadata]
+  version = metadata[:version]
+rescue
+  metadata = {}
+  version = last_version
+end
+
+basename = File.basename(secret)
+dirname = File.dirname(secret)
+begin
+  FileUtils.mkdir_p File.join(destination, dirname)
+rescue Errno::EEXIST
+end
+
+open(File.join(destination, dirname, basename + '.json'), 'w') { |f| f.puts data.to_json }
+
+ret = {version: {id: "#{version}"}, metadata: metadata}.to_json
+puts ret
