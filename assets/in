@@ -2,22 +2,6 @@
 
 require 'vault'
 require 'fileutils'
-require 'date'
-
-
-# {
-#   "source": {
-#     "host": "...",
-#     "user": "...",
-#     "password": "..."
-#     "database": "..."
-#     "secret": "..."
-#   },
-#   "version": { "id": 1423 },
-#   "params: {
-#   ...
-#   }
-# }
 
 destination = ARGV[0]
 source = JSON.parse STDIN.read
@@ -25,12 +9,6 @@ source = JSON.parse STDIN.read
 host = source['source']['host']
 token = source['source']['token']
 secret = source['source']['secret']
-
-begin
-  last_version = source['version']['id'] 
-rescue
-  last_version = Date.today.to_time.to_i
-end
 
 Vault.configure do |config|
   config.address = host
@@ -51,10 +29,11 @@ end
 
 metadata = []
 begin
-  metadata << dataobj.data[:metadata]
-  version = metadata[:version]
+  meta = dataobj.data[:metadata]
+  metadata << meta unless meta.nil?
+  version = meta[:version]
 rescue
-  version = last_version
+  version = Time.now.to_i
 end
 
 basename = File.basename(secret)
